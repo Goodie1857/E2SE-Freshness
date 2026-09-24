@@ -1,0 +1,9 @@
+config.properties
+*.log
+*.tmp
+.DS_Store
+E2se4j/config.properties
+E2se4j/target/
+*.iml
+*accessKeys*.csv
+vault*.txt
