@@ -1,0 +1,11 @@
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ ping -c 5 s3.ap-southeast-2.amazonaws.com
+PING s3.ap-southeast-2.amazonaws.com (3.5.168.88) 56(84) bytes of data.
+64 bytes from 3.5.168.88 (3.5.168.88): icmp_seq=1 ttl=58 time=3.49 ms
+64 bytes from 3.5.168.88 (3.5.168.88): icmp_seq=2 ttl=58 time=2.75 ms
+64 bytes from 3.5.168.88 (3.5.168.88): icmp_seq=3 ttl=58 time=2.85 ms
+64 bytes from 3.5.168.88 (3.5.168.88): icmp_seq=4 ttl=58 time=2.75 ms
+64 bytes from 3.5.168.88 (3.5.168.88): icmp_seq=5 ttl=58 time=2.67 ms
+
+--- s3.ap-southeast-2.amazonaws.com ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4403ms
+rtt min/avg/max/mdev = 2.671/2.901/3.490/0.299 ms

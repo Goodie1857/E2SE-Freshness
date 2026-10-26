@@ -48,6 +48,8 @@ public class Client {
     private final String secretKeyId;
     private final String regionName;
     public final String bucketName;
+    private byte[] lastT;                       // version head (thesis extension): the login token t of the last take(), so pm/Head can authenticate to K without deriving it again
+    public byte[] getLastT() { return lastT; }
 
     /**
      * S3 credential configuration
@@ -446,7 +448,7 @@ public class Client {
     public void register(String authServerAddress, int authServerPort, String authServerName, String userID, String passphrase, String bucketName, String key0) throws Exception {
 
         byte[] sid = new byte[Constants.R_LENGTH];
-        Random rand = new Random();
+        SecureRandom rand = new SecureRandom();
         rand.nextBytes(sid);
 
         {
@@ -518,7 +520,7 @@ public class Client {
 
         byte[] rid = new byte[Constants.R_LENGTH];
         byte[] sid = new byte[Constants.R_LENGTH];
-        Random rand = new Random();
+        SecureRandom rand = new SecureRandom();
         rand.nextBytes(rid);
         byte[] parameter = new byte[Constants.R_LENGTH];
         System.arraycopy(rid, 0, parameter, 0, Constants.R_LENGTH);
@@ -645,6 +647,7 @@ public class Client {
             throw ace;
         }
         byte[] t = Utils.KDF(sid, passphrase, Constants.KDF1_SALT, Constants.MAC_KEY_LENGTH, kdfHashRepetitions);
+        this.lastT = t;                             // version head (thesis extension): keep t for pm/Head.get and pm/Head.update after this unlock
         byte[] k1 = Utils.KDF(rid, passphrase, Constants.KDF2_SALT, Constants.ENC_KEY_LENGTH, kdfHashRepetitions);
         byte[] k2 = Utils.KDF(rid, passphrase, Constants.KDF3_SALT, Constants.ENC_KEY_LENGTH, kdfHashRepetitions);
 
@@ -684,8 +687,8 @@ public class Client {
         byte[] ivct = ivCt.toByteArray();
 
         byte[] taoCal = Utils.KDF(ivct, Arrays.toString(k2), Constants.KDF4_SALT, Constants.ENC_KEY_LENGTH, kdfHashRepetitions);
-        if (!Arrays.equals(tao, taoCal)) {
-            logger.log("User " + userID + " did not take a valid tao. Retrieval request ignored.");
+        if (!MessageDigest.isEqual(tao, taoCal)) {
+            throw new Exception("User " + userID + " did not take a valid tao. Retrieval request ignored.");
         }
 
         Cipher cipher = Cipher.getInstance(Constants.KEY_ENCRYPTION_ALGORITHM);

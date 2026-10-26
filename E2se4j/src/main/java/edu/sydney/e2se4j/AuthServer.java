@@ -58,6 +58,10 @@ public class AuthServer {
 
         Map<String, UserRecord> usersRec = new HashMap<String, UserRecord>();
         Map<String, UserRegister> usersReg = new HashMap<String, UserRegister>();
+        for (edu.sydney.e2se4j.pm.KState.Record r : edu.sydney.e2se4j.pm.KState.loadAll()) { // persistence (thesis extension, sprint W4): refill both tables from kstate/; the heads are restored inside loadAll
+            usersReg.put(r.uid, new UserRegister(r.t));
+            if (r.tao != null) usersRec.put(r.uid, new UserRecord(r.tao, r.ct));
+        }
         ServerSocket serverListener;
 
         if (Constants.USE_TLS) {
@@ -127,6 +131,7 @@ public class AuthServer {
                             break;
                         }
                         usersReg.put(userID, new UserRegister(t));
+                        edu.sydney.e2se4j.pm.KState.saveRegister(userID, t); // persistence (W4): on disk before the OK below
                         if (verbose) System.out.println("Register for " + userID + " succeeded.");
                         clientSocket.getOutputStream().write(Constants.RESP_TYPE_OK);
 
@@ -149,7 +154,7 @@ public class AuthServer {
                         in.read(tReceive);
 
                         UserRegister userR = usersReg.get(userID);
-                        if (!Arrays.equals(userR.t, tReceive)) {
+                        if (!java.security.MessageDigest.isEqual(userR.t, tReceive)) {
                             System.out.println("User " + userID + " did not enter a valid password. Deposit request ignored.");
                             clientSocket.getOutputStream().write(Constants.RESP_TYPE_ERROR);
                             break;
@@ -163,6 +168,7 @@ public class AuthServer {
                         in.read(ct);
 
                         usersRec.put(userID, new UserRecord(tao, ct));
+                        edu.sydney.e2se4j.pm.KState.saveDeposit(userID, tao, ct); // persistence (W4): on disk before the OK below
                         if (verbose) System.out.println("Deposit for " + userID + " succeeded.");
                         clientSocket.getOutputStream().write(Constants.RESP_TYPE_OK);
 
@@ -187,7 +193,7 @@ public class AuthServer {
 
                         UserRegister userR = usersReg.get(userID);
 
-                        if (!Arrays.equals(userR.t, tReceive)) {
+                        if (!java.security.MessageDigest.isEqual(userR.t, tReceive)) {
                             System.out.println("User " + userID + " did not enter a correct password. Retrieval request ignored.");
                             clientSocket.getOutputStream().write(Constants.RESP_TYPE_ERROR);
                             break;
@@ -204,6 +210,16 @@ public class AuthServer {
                         if (verbose) System.out.println("Retrieval request for " + userID + "succeeded.");
                         clientSocket.getOutputStream().write(Constants.RESP_TYPE_OK);
 
+                    }
+                    break;
+                    case edu.sydney.e2se4j.pm.Head.REQ_HEAD_GET: { // version head (thesis extension, design/0002): the handlers live in pm/Head.java; names written in full so no import line is added
+                        edu.sydney.e2se4j.pm.Head.handleGet(in, clientSocket.getOutputStream(), userID,
+                                usersReg.containsKey(userID) ? usersReg.get(userID).t : null, usersRec.containsKey(userID));
+                    }
+                    break;
+                    case edu.sydney.e2se4j.pm.Head.REQ_HEAD_UPDATE: {
+                        edu.sydney.e2se4j.pm.Head.handleUpdate(in, clientSocket.getOutputStream(), userID,
+                                usersReg.containsKey(userID) ? usersReg.get(userID).t : null, usersRec.containsKey(userID));
                     }
                     break;
                     default:

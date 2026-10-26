@@ -1,0 +1,40 @@
+# Rollback demo, "sealed vault, no head": today's jar with --no-head on every manager command (the seal is checked; the key server is never asked)
+# Date 2026-10-26. uid cecil7. Pasted terminal transcript; passphrase prompts show no input by design.
+# Jar: the same build as rollback-head.log; key server on the laptop; real S3.
+# Honest client: edu.sydney.e2se4j.pm.PasswordManager --no-head.  Adversary D: edu.sydney.e2se4j.pm.StorageAdversary, the same program and commands as in rollback-before.log.
+# Outcome: [Cecil: one line - what retrieve did, the exit code, which text came back]
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager init cecil7
+passphrase: 
+confirm passphrase: 
+Oct 26, 2026 8:45:41 PM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault key created for cecil7
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager store cecil7 vault_a.txt --no-head
+passphrase: 
+Oct 26, 2026 8:45:47 PM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault stored as cecil7/vault: version 1, 59 bytes, sha256 3DF611AB47E24C0592F2319706EDA437ECC42308034C80AF4E19E8356DD6A944 (no head: the key server was not told)
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary snapshot cecil7 snap7.bin
+D: saved cecil7/vault as snap7.bin
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager store cecil7 vault_b.txt --no-head
+passphrase: 
+Oct 26, 2026 8:46:03 PM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault stored as cecil7/vault: version 1, 59 bytes, sha256 B8C3D4534D700E330D9C35FD45C4D352BBA3C07040916BB14C10D2B715185A39 (no head: the key server was not told)
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary rollback cecil7 snap7.bin
+Oct 26, 2026 8:46:07 PM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+D: put snap7.bin back as cecil7/vault
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve cecil7 vault_out_nohead.txt --no-head
+passphrase: 
+vault retrieved to vault_out_nohead.txt: version 1, 59 bytes, sha256 3DF611AB47E24C0592F2319706EDA437ECC42308034C80AF4E19E8356DD6A944 (no head: the key server was not asked)
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ echo $?
+0
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ cat vault_out_nohead.txt
+gmail,cecil,passwordA
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve cecil7 vault_out_nohead.txt
+passphrase: 
+error: no vault stored yet for cecil7 (the key server holds no version) - run store first
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve cecil7 vault_out_nohead.txt --no-head
+passphrase: 
+vault retrieved to vault_out_nohead.txt: version 1, 59 bytes, sha256 3DF611AB47E24C0592F2319706EDA437ECC42308034C80AF4E19E8356DD6A944 (no head: the key server was not asked)

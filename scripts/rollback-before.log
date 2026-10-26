@@ -1,0 +1,32 @@
+# Rollback demo, "before": pre-fix code path (AES-CTR vault, no version head)
+# Date 2026-09-28. uid rb0928. Pasted terminal transcript; passphrase prompts show no input by design.
+# Jar built from the working tree of 2026-09-28 (Phase 1 commit); vault path byte-identical to tag mvp-pre-fix.
+# Honest client: edu.sydney.e2se4j.pm.PasswordManager.  Adversary D: edu.sydney.e2se4j.pm.StorageAdversary.
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager init rb0928
+passphrase: 
+confirm passphrase: 
+Sep 28, 2026 2:07:09 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault key created for rb0928
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager store rb0928 vault_a.txt
+passphrase: 
+Sep 28, 2026 2:07:22 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault stored encrypted as rb0928/vault
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary snapshot rb0928 old_vault.bin
+D: saved rb0928/vault as old_vault.bin
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager store rb0928 vault_b.txt
+passphrase: 
+Sep 28, 2026 2:07:42 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault stored encrypted as rb0928/vault
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve rb0928 vault_check.txt
+passphrase: 
+vault retrieved to vault_check.txt
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary rollback rb0928 old_vault.bin
+Sep 28, 2026 2:08:49 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+D: put old_vault.bin back as rb0928/vault
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve rb0928 vault_out.txt
+passphrase: 
+vault retrieved to vault_out.txt
