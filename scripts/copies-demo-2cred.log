@@ -1,0 +1,88 @@
+03-11-2026
+uid cecil13 (04:19 to 04:36; the SDK warning lines carry the times)
+branch copies-experiment, two buckets at one provider, each under its own IAM credential (credential 1: GetObject and PutObject on bucket 1 only; credential 2: the same on bucket 2 only); the adversary holds one credential; the provider itself still holds both
+Outcome: credential 1 refused at bucket 2 (AccessDenied on read and on write) and credential 2 refused at bucket 1 (AccessDenied on read); bucket 1 rolled back: recovered from bucket 2, bucket 1 repaired, exit 0, file equals vault_b; bucket 2 rolled back while bucket 1 is current: bucket 1 accepted, bucket 2 not consulted, exit 0, file equals vault_b; both copies rolled back (both credentials used): refused, exit 4, nothing written; the same two stale copies without the head (--no-head control): accepted, exit 0, file equals vault_a
+Edits to the paste: four mistyped commands and their error lines removed (cat of a file that did not exist, twice; rollback typed without the uid, twice). An earlier attempt as cecil12 (from 03:58) was abandoned: its first init failed with SignatureDoesNotMatch while the first credential's lines were being edited, and its store then wrote bucket 1 only, the second secret having been copied with one character too many; cecil12's objects and key-server record remain to be deleted. The exit code of the refused retrieve (04:36) was not captured at the time (the echo $? after it belongs to the --no-head control), so the refused retrieve was re-run at the end, about 04:58, in the same state (both copies at version 1, head at 2): exit 4, no file. The re-run is the last block below.
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager init cecil13
+passphrase: 
+confirm passphrase: 
+Nov 03, 2026 4:19:00 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault key created for cecil13
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager store cecil13 vault_a.txt
+passphrase: 
+Nov 03, 2026 4:19:12 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+bucket 1 written
+bucket 2 written
+vault stored as cecil13/vault: version 1, 59 bytes, sha256 9AAC3EF6BF5F1247D8483A6215C5D201B0375BFD3EB290D7120739E239B852C5; head at the key server moved 0 -> 1
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary snapshot cecil13 snap13a.bin 1
+D: saved cecil13/vault from bucket 1 (holding credential 1) as snap13a.bin
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary snapshot cecil13 snap13b.bin 2 2
+D: saved cecil13/vault from bucket 2 (holding credential 2) as snap13b.bin
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary snapshot cecil13 probe.bin 2
+D: error: cannot read cecil13/vault in bucket 2 (holding credential 1): AccessDenied
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary rollback cecil13 snap13b.bin 2
+Nov 03, 2026 4:22:39 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+D: error: cannot write cecil13/vault in bucket 2 (holding credential 1): AccessDenied
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager store cecil13 vault_b.txt
+passphrase: 
+Nov 03, 2026 4:23:55 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+bucket 1 written
+bucket 2 written
+vault stored as cecil13/vault: version 2, 59 bytes, sha256 B36ACD65957481193F8474EC63A8991D18704A1E4906E11B8E1C09C095BED53A; head at the key server moved 1 -> 2
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary rollback cecil13 snap13a.bin 1
+Nov 03, 2026 4:25:13 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+D: put snap13a.bin back as cecil13/vault in bucket 1 (holding credential 1)
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve cecil13 out13.txt
+passphrase: 
+bucket 1 returned version 1, key server says 2; bucket 2 is current: recovered
+Nov 03, 2026 4:29:37 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+bucket 1 repaired
+vault retrieved to out13.txt: version 2, 59 bytes, sha256 B36ACD65957481193F8474EC63A8991D18704A1E4906E11B8E1C09C095BED53A; matches the head at the key server
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ echo $?
+0
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ cat out13.txt
+gmail,cecil,passwordB
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary snapshot cecil13 probe2.bin 1 2
+D: error: cannot read cecil13/vault in bucket 1 (holding credential 2): AccessDenied
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary rollback cecil13 snap13b.bin 2 2
+Nov 03, 2026 4:30:54 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+D: put snap13b.bin back as cecil13/vault in bucket 2 (holding credential 2)
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve cecil13 out13b.txt
+passphrase: 
+vault retrieved to out13b.txt: version 2, 59 bytes, sha256 B36ACD65957481193F8474EC63A8991D18704A1E4906E11B8E1C09C095BED53A; matches the head at the key server
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ echo $?
+0
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ cat out13b.txt
+gmail,cecil,passwordB
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary rollback cecil13 snap13a.bin 1
+Nov 03, 2026 4:35:26 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+D: put snap13a.bin back as cecil13/vault in bucket 1 (holding credential 1)
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary rollback cecil13 snap13b.bin 2 2
+Nov 03, 2026 4:35:48 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+D: put snap13b.bin back as cecil13/vault in bucket 2 (holding credential 2)
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve cecil13 out13c.txt
+passphrase: 
+error: bucket 1 returned version 1, bucket 2 returned version 1, key server says 2 (rollback at both, or an interrupted store). Nothing was written to out13c.txt.
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve cecil13 out13c.txt --no-head
+passphrase: 
+vault retrieved to out13c.txt: version 1, 59 bytes, sha256 9AAC3EF6BF5F1247D8483A6215C5D201B0375BFD3EB290D7120739E239B852C5 (no head: the key server was not asked)
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ echo $?
+0
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ cat out13c.txt
+gmail,cecil,passwordA
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve cecil13 out13d.txt
+passphrase: 
+error: bucket 1 returned version 1, bucket 2 returned version 1, key server says 2 (rollback at both, or an interrupted store). Nothing was written to out13d.txt.
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ echo $?
+4
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ cat out13d.txt
+cat: out13d.txt: No such file or directory

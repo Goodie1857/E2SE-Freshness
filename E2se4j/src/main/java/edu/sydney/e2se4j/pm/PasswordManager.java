@@ -37,6 +37,11 @@ public class PasswordManager {
     static final int EXIT_STALE = 4;
     static final int EXIT_REFUSED = 5;
 
+    /** Copies experiment (design/0003): the second data server's bucket, from bucketName2 in config.properties; null = the one-bucket behaviour of tag thesis-final. Set by main only; PmBench never sets it. */
+    static String bucket2 = null;
+    /** The S3 client used for bucket 2: a second credential (accessKeyId2 / secretKeyId2 in config.properties) when present, so that each bucket has its own keyring; otherwise the same client as bucket 1. */
+    static AmazonS3 s3b = null;
+
     /** Command-line switches, accepted anywhere after the command word. */
     static final class Flags {
         boolean force;   // store: take the key server's current version as the base even if the local copy's sidecar says otherwise (the human override; no merge)
@@ -67,9 +72,15 @@ public class PasswordManager {
         String secretKeyId = prop.getProperty("secretKeyId");
         String regionName  = prop.getProperty("regionName"); // which AWS datacentre
         String bucketName  = prop.getProperty("bucketName"); // which storage container
+        String second      = prop.getProperty("bucketName2"); // copies experiment: a second bucket under the same credential and region (mechanism only: one credential controls both)
+        bucket2 = (second == null || second.trim().isEmpty()) ? null : second.trim();
+        String accessKeyId2 = prop.getProperty("accessKeyId2"), secretKeyId2 = prop.getProperty("secretKeyId2"); // optional: the second data server's own credential
 
         Client client = new Client(accessKeyId, secretKeyId, regionName, bucketName);
         AmazonS3 s3 = s3(accessKeyId, secretKeyId, regionName); // one S3 connection object for the whole command
+        s3b = (bucket2 == null) ? null
+            : (accessKeyId2 != null && !accessKeyId2.trim().isEmpty()) ? s3(accessKeyId2.trim(), secretKeyId2.trim(), regionName) // bucket 2 under its own credential
+            : s3;                                                                                                   // or the same credential (mechanism-only demo)
 
         // three S3 object names; all three sit at the data server, in plaintext, under this user (uid)'s prefix
         String key0 = uid + "/sid";        // first salt s_id, 16 random bytes: written once by init (Register); read back by every unlock (Take) to re-derive the login token t from the passphrase
@@ -140,7 +151,7 @@ public class PasswordManager {
             int n = sidecar == null ? 1 : sidecar + 1;
             byte[] blob = SealedVault.seal(mk, uid, n, plain);
             writeSidecar(file, uid, n);
-            upload(s3, bucket, vaultObject, blob);
+            uploadCopies(s3, bucket, vaultObject, blob);
             System.out.println("vault stored as " + vaultObject + ": version " + n + ", " + blob.length + " bytes, sha256 " + Utils.bytesToHex(SealedVault.fingerprint(blob)) + " (no head: the key server was not told)");
             return;
         }
@@ -158,7 +169,7 @@ public class PasswordManager {
             fail("vault moved to version " + conflict.n + " at the key server while storing (another device?): retrieve, re-apply your edit, store again", EXIT_CONFLICT);
         }
         writeSidecar(file, uid, n);                                                 // BEFORE the upload: if we crash now, our own re-run starts from n and is not locked out
-        upload(s3, bucket, vaultObject, blob);                                      // only sealed bytes ever leave this machine
+        uploadCopies(s3, bucket, vaultObject, blob);                                      // only sealed bytes ever leave this machine
         System.out.println("vault stored as " + vaultObject + ": version " + n + ", " + blob.length + " bytes, sha256 " + Utils.bytesToHex(h) + "; head at the key server moved " + base + " -> " + n);
     }
 
@@ -180,7 +191,8 @@ public class PasswordManager {
 
         Head head = headGet(client, uid, t);                                        // round trip 1: the latest version and its fingerprint, from the party I just logged in to
         if (head.n == 0) fail("no vault stored yet for " + uid + " (the key server holds no version) - run store first");
-        byte[] blob = download(s3, bucket, vaultObject);
+        byte[] blob = bucket2 == null ? download(s3, bucket, vaultObject)                                   // one data server: exactly as before
+                                      : currentCopy(s3, bucket, vaultObject, head, " Nothing was written to " + file + "."); // two: the copy that matches the head, else exit 4
         if (blob == null) fail("key server has version " + head.n + ", storage has nothing: the vault object is missing. Nothing was written to " + file + ".", EXIT_STALE);
         int nD = SealedVault.version(blob);                                         // the version storage claims (Refused if this is not a sealed vault at all)
         if (nD < head.n) fail("storage returned version " + nD + ", key server says " + head.n + " (rollback, or an interrupted store). Nothing was written to " + file + ".", EXIT_STALE);
@@ -209,7 +221,8 @@ public class PasswordManager {
         byte[] t = client.getLastT();
         Head head = headGet(client, uid, t);                                        // round trip 1: the latest version and its fingerprint. This n is the base every change starts from; there is no sidecar because there is no local file
         if (head.n == 0) return new Opened(mk, t, head, new byte[0]);              // nothing stored yet: the vault starts empty
-        byte[] blob = download(s3, bucket, vaultObject);
+        byte[] blob = bucket2 == null ? download(s3, bucket, vaultObject)                                   // one data server: exactly as before
+                                      : currentCopy(s3, bucket, vaultObject, head, "");                   // two: the copy that matches the head, else exit 4
         if (blob == null) fail("key server has version " + head.n + ", storage has nothing: the vault object is missing.", EXIT_STALE);
         int nD = SealedVault.version(blob);                                         // the version storage claims (Refused if this is not a sealed vault at all)
         if (nD < head.n) fail("storage returned version " + nD + ", key server says " + head.n + " (rollback, or an interrupted store).", EXIT_STALE);
@@ -227,7 +240,7 @@ public class PasswordManager {
         byte[] h = SealedVault.fingerprint(blob);
         Head conflict = headUpdate(client, uid, o.t, base, n, h);                   // round trip 2: reserve n; refused if another device moved the head since round trip 1
         if (conflict != null) fail("vault moved to version " + conflict.n + " at the key server while changing it (another device?): run the command again", EXIT_CONFLICT);
-        upload(s3, bucket, vaultObject, blob);                                      // only sealed bytes ever leave this machine
+        uploadCopies(s3, bucket, vaultObject, blob);                                      // only sealed bytes ever leave this machine
         System.out.println(whatChanged);
         System.out.println("vault stored as " + vaultObject + ": version " + n + ", " + blob.length + " bytes, sha256 " + Utils.bytesToHex(h) + "; head at the key server moved " + base + " -> " + n);
     }
@@ -280,6 +293,64 @@ public class PasswordManager {
                 System.out.println(e.name + "\t" + e.username + "\t" + e.password);   // the only place a password is printed: the terminal, never a file
                 break;
             }
+        }
+    }
+
+    // ------------------------------------------------------------------ copies experiment (design/0003; branch copies-experiment only) ------------------------------------------------------------------
+
+    /** PUT the sealed blob to bucket 1 and, when bucketName2 is configured, to bucket 2 as well. Succeeds when at least one copy was written: the head has already committed at the key server, and one written copy is current. */
+    static void uploadCopies(AmazonS3 s3, String bucket, String vaultObject, byte[] blob) {
+        if (bucket2 == null) { upload(s3, bucket, vaultObject, blob); return; }    // one data server: exactly as before
+        String[] names = { "bucket 1", "bucket 2" };
+        String[] buckets = { bucket, bucket2 };
+        int written = 0;
+        for (int i = 0; i < 2; i++) {                                               // in series (the design says in parallel; the demonstration proves the mechanism, not the timing)
+            try {
+                upload(i == 0 ? s3 : s3b, buckets[i], vaultObject, blob);
+                System.out.println(names[i] + " written");
+                written++;
+            } catch (Exception e) {
+                System.out.println(names[i] + " failed: " + e.getMessage() + "; will be repaired on the next successful read");
+            }
+        }
+        if (written == 0) fail("no copy was written: the key server is already at the new version, so readers see an interrupted store until the next store");
+    }
+
+    /** Two data servers: return the first copy whose version and fingerprint equal the head (bucket 1 first, bucket 2 on failover, repairing bucket 1 from it); refuse with exit 4 naming what each bucket returned when neither matches. */
+    static byte[] currentCopy(AmazonS3 s3, String bucket, String vaultObject, Head head, String nothingWritten) throws Exception {
+        byte[] b1 = download(s3, bucket, vaultObject);
+        if (matchesHead(b1, head)) return b1;                                       // bucket 1 is current: the everyday path, nothing printed
+        byte[] b2 = download(s3b, bucket2, vaultObject);
+        if (matchesHead(b2, head)) {
+            System.out.println("bucket 1 returned " + describe(b1) + ", key server says " + head.n + "; bucket 2 is current: recovered");
+            try {
+                upload(s3, bucket, vaultObject, b2);                                // repair with bytes just verified against the head: availability hygiene, not a security step
+                System.out.println("bucket 1 repaired");
+            } catch (Exception e) {
+                System.out.println("bucket 1 not repaired: " + e.getMessage());
+            }
+            return b2;
+        }
+        fail("bucket 1 returned " + describe(b1) + ", bucket 2 returned " + describe(b2) + ", key server says " + head.n + " (rollback at both, or an interrupted store)." + nothingWritten, EXIT_STALE);
+        return null; // never reached: fail() exits
+    }
+
+    /** True when the blob exists, its header says the head's version and its fingerprint is the head's. A blob that is not a sealed vault at all counts as not matching. */
+    private static boolean matchesHead(byte[] blob, Head head) {
+        if (blob == null) return false;
+        try {
+            return SealedVault.version(blob) == head.n && MessageDigest.isEqual(SealedVault.fingerprint(blob), head.h);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static String describe(byte[] blob) {
+        if (blob == null) return "nothing";
+        try {
+            return "version " + SealedVault.version(blob);
+        } catch (Exception e) {
+            return "something that is not a sealed vault";
         }
     }
 
@@ -395,6 +466,7 @@ public class PasswordManager {
         System.out.println("  vault lines: name TAB username TAB password, one entry per line; the entry commands always check the head and keep the plaintext in memory only");
         System.out.println("  --force    store: use the key server's current version as the base even if your copy is older (overwrites; no merge)");
         System.out.println("  --no-head  skip the version head: no freshness check (evaluation baseline / demo control)");
+        System.out.println("  bucketName2 in config.properties (copies experiment): store writes the sealed vault to both buckets; retrieve takes the copy that matches the head and repairs the other");
         System.out.println("exit codes: 0 ok, 1 error, 2 usage, 3 store conflict (your copy is not the latest), 4 stale or substituted vault, 5 vault refused (seal or format check failed)");
     }
 }

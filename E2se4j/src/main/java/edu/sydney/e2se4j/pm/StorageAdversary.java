@@ -36,6 +36,20 @@ public class StorageAdversary {
         String secretKeyId = prop.getProperty("secretKeyId");
         String regionName  = prop.getProperty("regionName");
         String bucketName  = prop.getProperty("bucketName");
+        String bucketName2 = prop.getProperty("bucketName2");                 // copies experiment: the second data server's bucket
+        String which = args.length >= 4 ? args[3] : "1";                       // which bucket D acts on: 1 (default) or 2
+        String cred  = args.length >= 5 ? args[4] : "1";                       // which credential D holds: 1 (default, the first bucket's) or 2 (the second bucket's)
+        if (!which.equals("1") && !which.equals("2") || !cred.equals("1") && !cred.equals("2")) { usage(); System.exit(2); }
+        if (which.equals("2")) {
+            if (bucketName2 == null || bucketName2.trim().isEmpty()) fail("no bucketName2 in config.properties");
+            bucketName = bucketName2.trim();
+        }
+        if (cred.equals("2")) {                                                  // D stole the second credential instead of the first
+            String a2 = prop.getProperty("accessKeyId2"), k2 = prop.getProperty("secretKeyId2");
+            if (a2 == null || a2.trim().isEmpty()) fail("no accessKeyId2 in config.properties");
+            accessKeyId = a2.trim(); secretKeyId = k2.trim();
+        }
+        String where = "bucket " + which + " (holding credential " + cred + ")";
 
         String vaultKey = uid + "/vault";
 
@@ -43,19 +57,23 @@ public class StorageAdversary {
             case "snapshot": { // D keeps a copy of the victim's current vault object, bytes untouched (D can copy ciphertext; it cannot open it)
                 try {
                     s3(accessKeyId, secretKeyId, regionName).getObject(new GetObjectRequest(bucketName, vaultKey), new File(file));
-                } catch (AmazonServiceException e) { // no such object
-                    fail("no vault on S3 for " + uid);
+                } catch (AmazonServiceException e) { // no such object, or this credential may not read this bucket
+                    fail("cannot read " + vaultKey + " in " + where + ": " + e.getErrorCode());
                 }
-                System.out.println("D: saved " + vaultKey + " as " + file);
+                System.out.println("D: saved " + vaultKey + " from " + where + " as " + file);
                 break;
             }
 
             case "rollback": { // D serves an OLD copy: upload a saved vault file back over <uid>/vault
                 File f = new File(file);                                    // the local snapshot to replay
                 if (!f.isFile()) fail("no such file: " + file);            // snapshot must have been taken first
-                s3(accessKeyId, secretKeyId, regionName)
-                        .putObject(new PutObjectRequest(bucketName, vaultKey, f)); // plain PUT: overwrites whatever is at <uid>/vault
-                System.out.println("D: put " + file + " back as " + vaultKey);
+                try {
+                    s3(accessKeyId, secretKeyId, regionName)
+                            .putObject(new PutObjectRequest(bucketName, vaultKey, f)); // plain PUT: overwrites whatever is at <uid>/vault
+                } catch (AmazonServiceException e) {                             // the provider refused this credential for this bucket
+                    fail("cannot write " + vaultKey + " in " + where + ": " + e.getErrorCode());
+                }
+                System.out.println("D: put " + file + " back as " + vaultKey + " in " + where);
                 break;
             }
 
@@ -73,7 +91,7 @@ public class StorageAdversary {
                 ObjectMetadata meta = new ObjectMetadata();
                 meta.setContentLength(blob.length);                          // S3 needs the length up front when uploading from memory
                 s3.putObject(new PutObjectRequest(bucketName, vaultKey, new ByteArrayInputStream(blob), meta)); // upload it back over the original
-                System.out.println("D: flipped one bit of byte " + index + " of " + vaultKey + " (" + blob.length + " bytes)");
+                System.out.println("D: flipped one bit of byte " + index + " of " + vaultKey + " in " + where + " (" + blob.length + " bytes)");
                 break;
             }
 
@@ -97,8 +115,9 @@ public class StorageAdversary {
     }
 
     private static void usage() {
-        System.out.println("usage: StorageAdversary snapshot <uid> <file>   save <uid>/vault as <file>");
-        System.out.println("       StorageAdversary rollback <uid> <file>   put <file> back as <uid>/vault");
-        System.out.println("       StorageAdversary tamper <uid> <byte>    flip one bit of byte <byte> of <uid>/vault");
+        System.out.println("usage: StorageAdversary snapshot <uid> <file> [bucket] [cred]   save <uid>/vault as <file>");
+        System.out.println("       StorageAdversary rollback <uid> <file> [bucket] [cred]   put <file> back as <uid>/vault");
+        System.out.println("       StorageAdversary tamper <uid> <byte> [bucket] [cred]    flip one bit of byte <byte> of <uid>/vault");
+        System.out.println("  bucket: 1 = bucketName (default), 2 = bucketName2;  cred: 1 = the first credential (default), 2 = accessKeyId2/secretKeyId2");
     }
 }

@@ -1,0 +1,63 @@
+01-11-2026
+branch copies-experiment, two buckets at one provider under one credential: mechanism only, not the property
+recovered at one rollback, exit 0, file equals vault_b; refused at two, exit 4, no file
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ cat vault_a.txt vault_b.txt 
+gmail,cecil,passwordA
+gmail,cecil,passwordB
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager init cecil11
+passphrase: 
+confirm passphrase: 
+Nov 02, 2026 1:21:21 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault key created for cecil11
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager store cecil11 vault_a.txt
+passphrase: 
+Nov 02, 2026 1:21:36 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+bucket 1 written
+bucket 2 written
+vault stored as cecil11/vault: version 1, 59 bytes, sha256 3D6D928435E2B540ACDADC5E8C838CBCC384630092F46609ABE9C4AA5AF15E6A; head at the key server moved 0 -> 1
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary snapshot cecil11 snap11a.bin 1
+D: saved cecil11/vault from bucket 1 as snap11a.bin
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary snapshot cecil11 snap11b.bin 2
+D: saved cecil11/vault from bucket 2 as snap11b.bin
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager store cecil11 vault_b.txt
+passphrase: 
+Nov 02, 2026 2:02:32 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+bucket 1 written
+bucket 2 written
+vault stored as cecil11/vault: version 2, 59 bytes, sha256 34D9A380FE5AD765557154A3E2CED302B02B0A0D07B560AE88FD43C20154D5BD; head at the key server moved 1 -> 2
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary rollback cecil11 snap11a.bin 1
+\Nov 02, 2026 2:02:53 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+D: put snap11a.bin back as cecil11/vault in bucket 1
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve cecil11 out11.txt
+passphrase: 
+bucket 1 returned version 1, key server says 2; bucket 2 is current: recovered
+Nov 02, 2026 2:22:15 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+bucket 1 repaired
+vault retrieved to out11.txt: version 2, 59 bytes, sha256 34D9A380FE5AD765557154A3E2CED302B02B0A0D07B560AE88FD43C20154D5BD; matches the head at the key server
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ echo $?
+0
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ cat out11.txt
+gmail,cecil,passwordB
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve cecil11 out11.txt
+passphrase: 
+vault retrieved to out11.txt: version 2, 59 bytes, sha256 34D9A380FE5AD765557154A3E2CED302B02B0A0D07B560AE88FD43C20154D5BD; matches the head at the key server
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary rollback cecil11 snap11a.bin 1
+java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary rollback cecil11 snap11b.bin 2
+Nov 02, 2026 2:28:12 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+D: put snap11a.bin back as cecil11/vault in bucket 1
+Nov 02, 2026 2:28:13 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+D: put snap11b.bin back as cecil11/vault in bucket 2
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager retrieve cecil11 out11c.txt
+passphrase: 
+error: bucket 1 returned version 1, bucket 2 returned version 1, key server says 2 (rollback at both, or an interrupted store). Nothing was written to out11c.txt.
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ echo $?
+4
+goodie1857@IMAGESE-JRC0LS7:~/E2SE-copies/E2se4j$ cat out11c.txt
+cat: out11c.txt: No such file or directory
