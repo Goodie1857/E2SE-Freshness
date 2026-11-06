@@ -1,0 +1,27 @@
+% fig-parties.tex: the three parties and the rollback, without and with the head (draft of 5 Nov 2026).
+% Build from this folder:  pdflatex fig-parties.tex
+% Source: Table 3.1 (what each party holds), section 3.3 (why the old vault passes), Table 3.3 (the two outcomes).
+\documentclass[tikz,border=4pt,11pt]{standalone}
+\input{style}
+\begin{document}
+\begin{tikzpicture}
+% ---------------------------------------------------------------- (a) without the head
+\node[font=\small\bfseries, anchor=west] at (-1.95,1.55) {(a)\ \ Without the head};
+\node[box] (Da) at (0,0)    {\textbf{Storage provider}\\[2pt]\footnotesize holds every version:\\[-1pt]\footnotesize 1 (old) and 2 (the latest)};
+\node[box] (Ca) at (7.1,0)  {\textbf{Client}\\[2pt]\footnotesize keeps nothing\\[-1pt]\footnotesize between commands};
+\node[box, quiet] (Ka) at (14.2,0) {\textbf{Key server}\\[2pt]\footnotesize login token,\\[-1pt]\footnotesize locked master key};
+\draw[bad] (Da) -- node[lab, above] {serves version 1} node[lab, below] {old, but genuine} (Ca);
+\draw[<->, draw=rule, line width=0.7pt] (Ca) -- node[lab, above, text=inktwo] {unlock only} (Ka);
+\node[outcome, below=0.45cm of Ca] (oa) {the seal verifies, and the client\\ has nothing to compare with:\\[2pt] \textbf{accepts version 1}};
+% ---------------------------------------------------------------- (b) with the head
+\begin{scope}[yshift=-5.9cm]
+\node[font=\small\bfseries, anchor=west] at (-1.95,1.55) {(b)\ \ With the head at the key server};
+\node[box] (Db) at (0,0)    {\textbf{Storage provider}\\[2pt]\footnotesize holds every version:\\[-1pt]\footnotesize 1 (old) and 2 (the latest)};
+\node[box] (Cb) at (7.1,0)  {\textbf{Client}\\[2pt]\footnotesize keeps nothing\\[-1pt]\footnotesize between commands};
+\node[box, draw=head, line width=1.0pt] (Kb) at (14.2,0) {\textbf{Key server}\\[2pt]\footnotesize login token, locked master key,\\[-1pt]\footnotesize \textbf{the head}: version 2\\[-1pt]\footnotesize and its fingerprint};
+\draw[bad] (Db) -- node[lab, above] {serves version 1} node[lab, below] {old, but genuine} (Cb);
+\draw[hmsg] (Kb) -- node[lab, above] {the head} (Cb);
+\node[outcome, below=0.45cm of Cb] (ob) {version 1 is not the version\\ the head names:\\[2pt] \textbf{refuses, writes nothing}};
+\end{scope}
+\end{tikzpicture}
+\end{document}

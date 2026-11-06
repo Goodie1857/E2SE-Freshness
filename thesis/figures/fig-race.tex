@@ -1,0 +1,46 @@
+% fig-race.tex: two devices storing from the same version, with the upload first and with the head first (draft of 6 Nov 2026).
+% Build from this folder:  pdflatex fig-race.tex     The blue arrows are requests about the head, as in the other figures.
+% Source: section 4.4, the paragraph "Reserve first", and the first rejected alternative of section 4.6.
+% Not run: this interleaving is the reasoning of the design (Table 6.5 says which two-device cases were run).
+\documentclass[tikz,border=4pt,11pt]{standalone}
+\input{style}
+\tikzset{
+  party/.append style={minimum width=2.9cm},
+  lab/.append style={fill=white, inner sep=1.5pt},
+}
+\begin{document}
+\begin{tikzpicture}
+% ---------------------------------------------------------------- (a) upload first
+\node[font=\small\bfseries, anchor=west] at (-1.45,1.0) {(a)\ \ Upload first, then tell the key server: rejected};
+\node[party] (A) at (0,0)    {Device A};
+\node[party] (B) at (3.6,0)  {Device B};
+\node[party] (K) at (8.6,0)  {Key server};
+\node[party] (D) at (13.2,0) {Storage provider};
+\foreach \x in {0,3.6,8.6,13.2} \draw[life] (\x,-0.4) -- (\x,-4.45);
+\node[band, minimum width=16.1cm] at (6.6,-1.05) {both devices hold version 5, and each has made its own change};
+\draw[msg]  (0,-2.0)   -- node[lab, above, pos=0.825] {1\ \ A uploads its version 6} (13.2,-2.0);
+\draw[bad]  (3.6,-2.75) -- node[lab, above, pos=0.76] {2\ \ B uploads its version 6} (13.2,-2.75);
+\node[side, anchor=west] at (13.45,-2.75) {A's copy is replaced};
+\draw[hmsg] (0,-3.5)   -- node[lab, above, pos=0.5] {3\ \ A: move the head from 5 to 6} (8.6,-3.5);
+\node[side, anchor=west] at (8.85,-3.5) {accepted};
+\draw[hmsg] (3.6,-4.25) -- node[lab, above] {4\ \ B: move the head from 5 to 6} (8.6,-4.25);
+\node[side, anchor=west] at (8.85,-4.25) {refused: the head is already 6};
+\node[outcome, anchor=north] at (6.6,-4.75) {the head names A's version, but storage holds B's: A's change is lost,\\ and every retrieve is refused until someone stores again};
+% ---------------------------------------------------------------- (b) reserve first
+\begin{scope}[yshift=-8.1cm]
+\node[font=\small\bfseries, anchor=west] at (-1.45,1.0) {(b)\ \ The head first, then the upload: the design};
+\node[party] (A2) at (0,0)    {Device A};
+\node[party] (B2) at (3.6,0)  {Device B};
+\node[party] (K2) at (8.6,0)  {Key server};
+\node[party] (D2) at (13.2,0) {Storage provider};
+\foreach \x in {0,3.6,8.6,13.2} \draw[life] (\x,-0.4) -- (\x,-3.7);
+\node[band, minimum width=16.1cm] at (6.6,-1.05) {both devices hold version 5, and each has made its own change};
+\draw[hmsg] (0,-2.0)   -- node[lab, above, pos=0.5] {1\ \ A: move the head from 5 to 6} (8.6,-2.0);
+\node[side, anchor=west] at (8.85,-2.0) {accepted};
+\draw[hmsg] (3.6,-2.75) -- node[lab, above] {2\ \ B: move the head from 5 to 6} (8.6,-2.75);
+\node[side, anchor=west] at (8.85,-2.75) {refused: B uploads nothing};
+\draw[msg]  (0,-3.5)   -- node[lab, above, pos=0.825] {3\ \ A uploads its version 6} (13.2,-3.5);
+\node[outcome, anchor=north] at (6.6,-4.0) {the head and storage both hold A's version; B retrieves it,\\ makes its change again and stores version 7};
+\end{scope}
+\end{tikzpicture}
+\end{document}

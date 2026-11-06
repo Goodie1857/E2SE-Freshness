@@ -2,7 +2,7 @@
 # Date 2026-10-26. uid cecil7. Pasted terminal transcript; passphrase prompts show no input by design.
 # Jar: the same build as rollback-head.log; key server on the laptop; real S3.
 # Honest client: edu.sydney.e2se4j.pm.PasswordManager --no-head.  Adversary D: edu.sydney.e2se4j.pm.StorageAdversary, the same program and commands as in rollback-before.log.
-# Outcome: [Cecil: one line - what retrieve did, the exit code, which text came back]
+# Outcome: retrieve --no-head accepted the put-back vault: "vault retrieved to vault_out_nohead.txt: version 1, 59 bytes, sha256 3DF6..." (the first store's fingerprint, not the second's B8C3...), exit 0, and the file holds vault_a's text; the seal passed because the old blob is genuine. The extra head-on retrieve was refused ("no vault stored yet for cecil7 (the key server holds no version)") because both stores bypassed the head, so the two configurations cannot be mixed on one uid. [Recorded by Claude from Cecil's transcript below, 27 Oct.]
 goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager init cecil7
 passphrase: 
 confirm passphrase: 

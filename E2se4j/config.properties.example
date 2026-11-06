@@ -1,0 +1,18 @@
+# Copy this file to config.properties (same folder) and fill in your own values.
+# config.properties is in .gitignore: it holds a real credential and must never be committed.
+
+# An IAM user's access key for Amazon S3. The programs call only s3:GetObject and
+# s3:PutObject, so a policy that allows these two actions on the one bucket is enough.
+accessKeyId = please-enter-the-S3-credential-access
+secretKeyId = please-enter-the-S3-credential-secret
+
+# The bucket (create it first; the code does not) and its region, e.g. ap-southeast-2 for Sydney.
+regionName = ap-southeast-2
+bucketName = please-enter-your-bucket-name
+
+# Where the key server listens, and the name its certificate carries.
+# These three values fit a key server started on the same machine with the
+# certificate that is in certificatesNew/.
+authServerIp = localhost
+authServerPort = 20202
+authServerName = CN=usyd.authserver,OU=authserver,O=server,L=sydney,ST=NSW,C=AU

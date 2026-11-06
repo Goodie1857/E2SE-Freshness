@@ -1,0 +1,95 @@
+# Key server test: a key server that lies (an old head, an invented head, "no head"). The lies are made by changing the key server's record file for one user while the key server is stopped; its code is unchanged.
+# Date 2026-11-06 (06:37 to 06:41; the SDK warning lines carry the times). uid cecil14. Pasted terminal transcript of both terminals, terminal 2 (the manager) first, terminal 1 (the key server) after it.
+# Jar: the build of 26 Oct 2026, whose source is identical to tag thesis-final; honest client edu.sydney.e2se4j.pm.PasswordManager (head on); key server on the laptop; real S3; no adversary program (the storage is honest throughout).
+# Names: PM is the manager's command line of Appendix A.3; REC is the key server's record file for this user, kstate/<SHA-256 of the user id>.properties. The passphrase came from the environment variable E2SE_PP, so no prompt appears.
+# Order of every change to the record: the key server was stopped (^C in terminal 1), the file was changed in terminal 2, the key server was started again (it reads the record files only when it starts).
+# Edits to the paste: the test passphrase is replaced by [test passphrase] and the key server's port number by [port]. Nothing else was changed or removed.
+# One command was typed before the key server had been started again, the first retrieve after the fingerprint was replaced: "could not unlock", exit 1, no file. It was repeated once the key server was up.
+# Outcome: (1) an old genuine head put back (version 1 while storage holds version 2): retrieve refused, "storage has version 2, key server says 1", exit 4, no file. (2) under that old head a store from a copy at version 1 was accepted, the key server moved the head 1 -> 2 a second time, and the earlier version 2 was replaced: a lost update, exit 0, and the next retrieve returned the latest write, not an old vault. (3) the fingerprint in the head replaced by an invented one: retrieve refused, "same version number 2, different bytes", exit 4, no file. (4) the head removed: retrieve and list stopped with "no vault stored yet", exit 1; a store from a copy with a receipt was refused as a conflict, exit 3; a first add stored a new vault of one entry as version 1 over the stored one, exit 0: the second route of the lost update. In no case was an old vault shown as current.
+# ---------------- terminal 2: the manager ----------------
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ PM="java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager"
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ U=cecil14
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ REC=kstate/$(printf '%s' "$U" | sha256sum | cut -d' ' -f1).properties
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ export E2SE_PP='[test passphrase]'
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM init $U
+Nov 06, 2026 6:37:15 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault key created for cecil14
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM store $U vault_a.txt
+Nov 06, 2026 6:37:21 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault stored as cecil14/vault: version 1, 59 bytes, sha256 1E72AF4BD09037307AEEB9F17564F46F9CFAA7E290DE9621E83719EACD52D2EC; head at the key server moved 0 -> 1
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ cp "$REC" /tmp/cecil14-head1.properties
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM store $U vault_b.txt
+Nov 06, 2026 6:37:40 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault stored as cecil14/vault: version 2, 59 bytes, sha256 D56FE442675C1EF25269EC5A44B2AEBB90158686176A32016FA9C42BDDD59FF4; head at the key server moved 1 -> 2
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM retrieve $U vault_out_control.txt; echo "exit $?"
+vault retrieved to vault_out_control.txt: version 2, 59 bytes, sha256 D56FE442675C1EF25269EC5A44B2AEBB90158686176A32016FA9C42BDDD59FF4; matches the head at the key server
+exit 0
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ cp /tmp/cecil14-head1.properties "$REC"
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM retrieve $U vault_out_replay.txt; echo "exit $?"; ls vault_out_replay.txt
+error: vault changed while retrieving (storage has version 2, key server says 1): retry. Nothing was written to vault_out_replay.txt.
+exit 4
+ls: cannot access 'vault_out_replay.txt': No such file or directory
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM store $U vault_a.txt; echo "exit $?"
+Nov 06, 2026 6:38:44 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault stored as cecil14/vault: version 2, 59 bytes, sha256 0F3F74B4B40337E6C092347C4BC66D641384FEAE1EB7BC576485A504686DA0D1; head at the key server moved 1 -> 2
+exit 0
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM retrieve $U vault_out_lost.txt; echo "exit $?"; cat vault_out_lost.txt
+vault retrieved to vault_out_lost.txt: version 2, 59 bytes, sha256 0F3F74B4B40337E6C092347C4BC66D641384FEAE1EB7BC576485A504686DA0D1; matches the head at the key server
+exit 0
+gmail,cecil,passwordA
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ sed -i 's/^headHash=.*/headHash=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=/' "$REC"
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM retrieve $U vault_out_invented.txt; echo "exit $?"; ls vault_out_invented.txt
+error: could not unlock: wrong passphrase, the key server is not running, or its record for 'cecil14' is missing or damaged
+exit 1
+ls: cannot access 'vault_out_invented.txt': No such file or directory
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM retrieve $U vault_out_invented.txt; echo "exit $?"; ls vault_out_invented.txt
+error: same version number 2, different bytes (substituted or tampered). Nothing was written to vault_out_invented.txt.
+exit 4
+ls: cannot access 'vault_out_invented.txt': No such file or directory
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ sed -i 's/^headN=.*/headN=0/' "$REC"
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM retrieve $U vault_out_nohead.txt; echo "exit $?"
+error: no vault stored yet for cecil14 (the key server holds no version) - run store first
+exit 1
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM list $U; echo "exit $?"
+error: no vault stored yet for cecil14 (the key server holds no version) - run add first
+exit 1
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM store $U vault_b.txt; echo "exit $?"
+error: vault is at version 0 at the key server, your copy is from version 2: retrieve, re-apply your edit, store again (or store --force to overwrite from this copy)
+exit 3
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM add $U newsite cecil pw-after-the-lie; echo "exit $?"
+Nov 06, 2026 6:40:43 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+added newsite
+vault stored as cecil14/vault: version 1, 68 bytes, sha256 C1D072E0A271805AC1AED0CC6F3525E25D1E5FA79B603C2A299F4F597100B015; head at the key server moved 0 -> 1
+exit 0
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ $PM list $U; echo "exit $?"
+vault cecil14/vault: version 1, 1 entry
+newsite cecil
+exit 0
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ unset E2SE_PP
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ rm /tmp/cecil14-head1.properties
+# ---------------- terminal 1: the key server ----------------
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -jar target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar authserver
+This is a running authserver
+AuthServer starting on port [port]...
+kstate: 7 user record(s) loaded from /home/goodie1857/E2SE/E2se4j/kstate
+User cecil14: head 0 -> 1.
+User cecil14: head 1 -> 2.
+^Cgoodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -jar target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar authserver
+This is a running authserver
+AuthServer starting on port [port]...
+kstate: 8 user record(s) loaded from /home/goodie1857/E2SE/E2se4j/kstate
+User cecil14: head 1 -> 2.
+^Cgoodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -jar target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar authserver
+This is a running authserver
+AuthServer starting on port [port]...
+kstate: 8 user record(s) loaded from /home/goodie1857/E2SE/E2se4j/kstate
+^Cgoodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -jar target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar authserver
+This is a running authserver
+AuthServer starting on port [port]...
+kstate: 8 user record(s) loaded from /home/goodie1857/E2SE/E2se4j/kstate
+User cecil14: head 0 -> 1.

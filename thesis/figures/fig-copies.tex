@@ -1,0 +1,24 @@
+% fig-copies.tex: recovery from a second copy, a retrieve after a rollback at one storage server (draft of 6 Nov 2026).
+% Build from this folder:  pdflatex fig-copies.tex
+% Source: section 4.8 ("The design") and Table 4.4, row "stale (rolled back) | current | honest": accepted from D2, D1 repaired.
+% Status of what is drawn: designed; the mechanism demonstrated at one provider (Table 6.6).
+\documentclass[tikz,border=4pt,11pt]{standalone}
+\input{style}
+\begin{document}
+\begin{tikzpicture}
+\node[box] (D1) at (0,2.0)    {\textbf{Storage server D1}\\[2pt]\footnotesize holds version $n-1$\\[-1pt]\footnotesize (rolled back)};
+\node[box] (D2) at (0,-2.0)   {\textbf{Storage server D2}\\[2pt]\footnotesize holds version $n$\\[-1pt]\footnotesize (current)};
+\node[box, minimum height=6.0cm] (C) at (10.0,0) {\textbf{Client}\\[2pt]\footnotesize keeps nothing\\[-1pt]\footnotesize between commands};
+\node[box, draw=head, line width=1.0pt] (K) at (17.4,0) {\textbf{Key server}\\[2pt]\footnotesize \textbf{the head}: version $n$,\\[-1pt]\footnotesize fingerprint $h$};
+% 1: the head
+\draw[hmsg] (K.west) -- node[lab, above] {1\ \ the head $(n, h)$} (C.east);
+% 2: the stale copy from D1
+\draw[bad] ([yshift=0.45cm]D1.east) -- node[lab, above] {2\ \ version $n-1$: does not match the head} ([yshift=0.45cm]D1.east -| C.west);
+% 4: repair of D1
+\draw[->, draw=inktwo, line width=0.7pt, dashed] ([yshift=-0.45cm]D1.east -| C.west) -- node[lab, below, text=inktwo] {4\ \ repair: the accepted copy is written back} ([yshift=-0.45cm]D1.east);
+% 3: the current copy from D2
+\draw[msg] (D2.east) -- node[lab, above] {3\ \ version $n$ with fingerprint $h$: matches} (D2.east -| C.west);
+\node[outcome, below=0.45cm of C] (o) {the copy that matches the head is current:\\[2pt] \textbf{accepts version $n$ from D2}};
+\node[side, anchor=north west] at ([yshift=-0.55cm]D2.south west) {One current copy is enough. Stale copies, however many,\\ can cause nothing worse than a refusal.};
+\end{tikzpicture}
+\end{document}

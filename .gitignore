@@ -1,21 +1,22 @@
+# never commit: the real configuration (it holds an AWS credential) and the key server's records
 config.properties
-*.log
-*.tmp
-.DS_Store
 E2se4j/config.properties
-E2se4j/target/
-*.iml
+E2se4j/kstate/
 *accessKeys*.csv
-vault*.txt
 
-!scripts/*.log
-# password-manager test leftovers: sidecars (<file>.version), adversary snapshots, retrieved copies
+# build output
+E2se4j/target/
+E2se4j/prefix.jar
+*.iml
+
+# leftovers of test runs: vault files, receipt files, the adversary's snapshots, retrieved copies
+vault*.txt
 *.version
 E2se4j/*.bin
 E2se4j/back*.txt
 
-# key server records (kstate/): login tokens and locked master keys; never commit
-E2se4j/kstate/
-
-# the pre-fix jar copied in for the W6 old-jar log (13 MB, rebuilt from tag mvp-pre-fix)
-E2se4j/prefix.jar
+# logs, except the transcripts
+*.log
+!scripts/*.log
+*.tmp
+.DS_Store

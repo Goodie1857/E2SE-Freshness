@@ -1,0 +1,60 @@
+# Rollback demo, "before": the pre-fix jar (AES-CTR vault, no seal, no version head), the manager as it was on 24 Sep 2026 (git tag mvp-pre-fix)
+# Date 2026-10-26/27. uid cecil8. Pasted terminal transcript; passphrase prompts show no input by design.
+# Jar: built from tag mvp-pre-fix in a git worktree (/tmp/prefix) and copied as E2se4j/prefix.jar (not committed); honest client edu.sydney.e2se4j.PasswordManager (main package, no pm.); key server = today's build on the laptop; real S3.
+# Adversary D: today's edu.sydney.e2se4j.pm.StorageAdversary, the same program and commands as in rollback-before.log, rollback-head.log and rollback-nohead.log.
+# Outcome: retrieve accepted the put-back vault: "vault retrieved to vault_out_prefix.txt", exit 0, and the file holds vault_a's text ("gmail,cecil,passwordA"), the first store's content although vault_b was stored last. No check exists that could have noticed. [Recorded by Claude from Cecil's transcript below, 27 Oct.]
+goodie1857@IMAGESE-JRC0LS7:~/E2SE$ git worktree add /tmp/prefix mvp-pre-fix
+Preparing worktree (detached HEAD ac1b759)
+HEAD is now at ac1b759 Reorganise docs into reference/ and learning/; add freshness thesis idea plan and design 0002
+goodie1857@IMAGESE-JRC0LS7:~/E2SE$ cd /tmp/prefix/E2se4j
+goodie1857@IMAGESE-JRC0LS7:/tmp/prefix/E2se4j$ mvn clean package
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< edu.sydney.e2se:E2se4j >-----------------------
+[INFO] Building E2se4j 1.0-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:2.5:clean (default-clean) @ E2se4j ---
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ E2se4j ---
+...
+...
+...
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  5.906 s
+[INFO] Finished at: 2026-10-27T00:50:52+11:00
+[INFO] ------------------------------------------------------------------------
+goodie1857@IMAGESE-JRC0LS7:/tmp/prefix/E2se4j$ cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar ~/E2SE/E2se4j/prefix.jar
+goodie1857@IMAGESE-JRC0LS7:/tmp/prefix/E2se4j$ cd ~/E2SE/E2se4j
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp prefix.jar edu.sydney.e2se4j.PasswordManager init cecil8
+passphrase: 
+confirm passphrase: 
+Oct 27, 2026 12:51:17 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault key created for cecil8
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp prefix.jar edu.sydney.e2se4j.PasswordManager store cecil8 vault_a.txt
+passphrase: 
+Oct 27, 2026 12:51:23 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault stored encrypted as cecil8/vault
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary snapshot cecil8 snap8.bin
+D: saved cecil8/vault as snap8.bin
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp prefix.jar edu.sydney.e2se4j.PasswordManager store cecil8 vault_b.txt
+passphrase: 
+Oct 27, 2026 12:51:32 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+vault stored encrypted as cecil8/vault
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.StorageAdversary rollback cecil8 snap8.bin
+Oct 27, 2026 12:51:36 AM com.amazonaws.util.Base64 warn
+WARNING: JAXB is unavailable. Will fallback to SDK implementation which may be less performant.If you are using Java 9+, you will need to include javax.xml.bind:jaxb-api as a dependency.
+D: put snap8.bin back as cecil8/vault
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp prefix.jar edu.sydney.e2se4j.PasswordManager retrieve cecil8 vault_out_prefix.txt
+passphrase: 
+vault retrieved to vault_out_prefix.txt
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ echo $?
+0
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ cat vault_out_prefix.txt
+gmail,cecil,passwordA
+goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ git worktree remove /tmp/prefix

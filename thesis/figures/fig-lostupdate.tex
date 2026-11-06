@@ -1,0 +1,49 @@
+% fig-lostupdate.tex: the two routes by which a malicious key server causes a lost update (6 Nov 2026, at Cecil's word).
+% Build from this folder:  pdflatex fig-lostupdate.tex     The blue arrows are requests about the head, as in the other figures.
+% Source: section 7.3, the paragraph on the lost update, and Table 7.2 (the rows "accepts two updates from the same base"
+% and "answers no head"). Both routes were reproduced on 6 Nov 2026 by changing the key server's record between commands
+% (Table 6.7, scripts/keyserver-lies.log); the version numbers here are illustrative, as in fig-race.tex.
+% The rows are 0.65 cm apart (0.75 in fig-race.tex) so that the figure and its caption fit on a page under a short paragraph.
+\documentclass[tikz,border=4pt,11pt]{standalone}
+\input{style}
+\tikzset{
+  party/.append style={minimum width=2.9cm},
+  lab/.append style={fill=white, inner sep=1.5pt},
+}
+\begin{document}
+\begin{tikzpicture}
+% ---------------------------------------------------------------- (a) two updates from the same base
+\node[font=\small\bfseries, anchor=west] at (-1.45,0.95) {(a)\ \ First route: the key server accepts two updates from the same base};
+\node[party] (A) at (0,0)    {Device A};
+\node[party] (B) at (3.6,0)  {Device B};
+\node[party] (K) at (8.6,0)  {Key server};
+\node[party] (D) at (13.2,0) {Storage provider};
+\foreach \x in {0,3.6,8.6,13.2} \draw[life] (\x,-0.4) -- (\x,-4.05);
+\node[band, minimum width=16.1cm] at (6.6,-1.0) {both devices hold version 5, and each has made its own change};
+\draw[hmsg] (0,-1.9)   -- node[lab, above, pos=0.5] {1\ \ A: move the head from 5 to 6} (8.6,-1.9);
+\node[side, anchor=west] at (8.85,-1.9) {accepted};
+\draw[msg]  (0,-2.55)  -- node[lab, above, pos=0.825] {2\ \ A uploads its version 6} (13.2,-2.55);
+\draw[hmsg] (3.6,-3.2) -- node[lab, above] {3\ \ B: move the head from 5 to 6} (8.6,-3.2);
+\node[side, anchor=west] at (8.85,-3.2) {accepted again: the lie};
+\draw[bad]  (3.6,-3.85) -- node[lab, above, pos=0.76] {4\ \ B uploads its version 6} (13.2,-3.85);
+\node[side, anchor=west] at (13.45,-3.85) {A's copy is replaced};
+\node[outcome, anchor=north] at (6.6,-4.3) {the head and storage both hold B's version: A's change is lost, and neither device is told;\\ a retrieve accepts B's version, which is the latest write and not an old vault};
+% ---------------------------------------------------------------- (b) no head
+\begin{scope}[yshift=-7.25cm]
+\node[font=\small\bfseries, anchor=west] at (-1.45,0.95) {(b)\ \ Second route: the key server reports no head};
+\node[party] (C2) at (0,0)    {Device};
+\node[party] (K2) at (8.6,0)  {Key server};
+\node[party] (D2) at (13.2,0) {Storage provider};
+\foreach \x in {0,8.6,13.2} \draw[life] (\x,-0.4) -- (\x,-4.05);
+\node[band, minimum width=16.1cm] at (6.6,-1.0) {the storage provider holds the user's vault, at version 5; the device holds nothing};
+\draw[hmsg] (0,-1.9)   -- node[lab, above, pos=0.5] {1\ \ what is the head?} (8.6,-1.9);
+\node[side, anchor=west] at (8.85,-1.9) {``no vault'': the lie};
+\node[act, anchor=west] at (0.3,-2.55) {2\ \ a first \texttt{add}: a new vault with one entry, as version 1};
+\draw[hmsg] (0,-3.2)   -- node[lab, above, pos=0.5] {3\ \ move the head from 0 to 1} (8.6,-3.2);
+\node[side, anchor=west] at (8.85,-3.2) {accepted};
+\draw[bad]  (0,-3.85)  -- node[lab, above, pos=0.825] {4\ \ uploads its version 1} (13.2,-3.85);
+\node[side, anchor=west] at (13.45,-3.85) {version 5 is replaced};
+\node[outcome, anchor=north] at (6.6,-4.3) {storage holds a new vault with one entry, and every earlier entry is lost;\\ a client that looked at storage before writing would have found the vault and refused};
+\end{scope}
+\end{tikzpicture}
+\end{document}

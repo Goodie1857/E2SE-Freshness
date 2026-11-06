@@ -2,7 +2,7 @@
 # Date 2026-10-26. uid cecil6. Pasted terminal transcript; passphrase prompts show no input by design.
 # Jar built 26 Oct 2026 from the working tree after commit "W5: entry commands ..." plus pm/PmBench (not used here); key server on the laptop; real S3.
 # Honest client: edu.sydney.e2se4j.pm.PasswordManager (head on).  Adversary D: edu.sydney.e2se4j.pm.StorageAdversary, the same program and commands as in rollback-before.log.
-# Outcome: [Cecil: one line - what retrieve did, the exit code, whether a file was written]
+# Outcome: retrieve refused: "error: storage returned version 1, key server says 2 (rollback, or an interrupted store). Nothing was written to vault_out_head.txt.", exit 4, and no file exists afterwards ("cat: vault_out_head.txt: No such file or directory"). [Recorded by Claude from Cecil's transcript below, 27 Oct.]
 goodie1857@IMAGESE-JRC0LS7:~/E2SE/E2se4j$ java -cp target/E2se4j-1.0-SNAPSHOT-jar-with-dependencies.jar edu.sydney.e2se4j.pm.PasswordManager init cecil6
 passphrase: 
 confirm passphrase: 
